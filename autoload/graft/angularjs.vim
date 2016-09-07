@@ -1,10 +1,15 @@
-let g:graft_angular_source_dir = get(g:, "graft_angular_source_dir", "app")
-let g:graft_angular_controller_dir = get(g:, "graft_angular_controller_dir", g:graft_angular_source_dir . "/controllers")
-let g:graft_angular_directive_dir = get(g:, "graft_angular_directive_dir", g:graft_angular_source_dir . "/directives")
-let g:graft_angular_service_dir = get(g:, "graft_angular_service_dir", g:graft_angular_source_dir . "/services")
+call graft#angular#setDefaults()
 
 function graft#angularjs#load()
-  let file = ""
+  if !exists("b:graft_angular_dir_root")
+    let b:graft_angular_dir_root = graft#angular#getRoot()
+  endif
+
+  let file = graft#angular#checkFileUnderCursor()
+  if !empty(file)
+    return file
+  endif
+  
   let variable = graft#angularjs#getVariableUnderCursor()
   let prop = ""
   if type(variable) == 3
@@ -46,11 +51,7 @@ endfunction
 
 function graft#angularjs#lookupServices()
   let service_dir = get(b:, "graft_angular_service_dir", g:graft_angular_service_dir)
-  let lookup = graft#findupFrom(expand("%:p"), ".git")
-  if empty(lookup)
-    let lookup = getcwd()
-  endif
-  let lookup = substitute(lookup, "/.git", "", "") . "/" . service_dir
+  let lookup = b:graft_angular_dir_root . service_dir
   return split(globpath(lookup, "*"))
 endfunction
 
