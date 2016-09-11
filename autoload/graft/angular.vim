@@ -1,9 +1,68 @@
-function graft#angular#setDefaults()
-  let g:graft_angular_source_dir = get(g:, "graft_angular_source_dir", "app")
-  let g:graft_angular_template_dir = get(g:, "graft_angular_template_dir", "app/templates")
-  let g:graft_angular_controller_dir = get(g:, "graft_angular_controller_dir", g:graft_angular_source_dir . "/controllers")
-  let g:graft_angular_directive_dir = get(g:, "graft_angular_directive_dir", g:graft_angular_source_dir . "/directives")
-  let g:graft_angular_service_dir = get(g:, "graft_angular_service_dir", g:graft_angular_source_dir . "/services")
+let g:graft_angular_source_dir = get(g:, "graft_angular_source_dir", "app")
+let g:graft_angular_template_dir = get(g:, "graft_angular_template_dir", "app/templates")
+let g:graft_angular_controller_dir = get(g:, "graft_angular_controller_dir", g:graft_angular_source_dir . "/controllers")
+let g:graft_angular_directive_dir = get(g:, "graft_angular_directive_dir", g:graft_angular_source_dir . "/directives")
+let g:graft_angular_service_dir = get(g:, "graft_angular_service_dir", g:graft_angular_source_dir . "/services")
+
+function graft#angular#load()
+  " Try to find the root of the repository
+  if !exists("b:graft_angular_dir_root")
+    let b:graft_angular_dir_root = graft#angular#getRoot()
+  endif
+
+  " Try real file names, like would be in ng-include, first
+  let file = graft#angular#checkFileUnderCursor()
+  if !empty(file)
+    return file
+  endif
+
+  " Try looking up the service or controller name
+  let variable = graft#angular#getVariableUnderCursor()
+  let prop = ""
+  if type(variable) == 3
+    let prop = variable[1]
+    let variable = variable[0]
+  endif
+
+  " If the variable starts with a capital it's probably a controller or service name
+  if variable =~ "^[A-Z]"
+    let service = graft#angular#find(graft#angular#services(), "factory('" . variable . "'")
+    if !empty(service)
+      let file = service
+    endif
+    let controller = graft#angular#find(graft#angular#controllers(), "controller('" . variable . "'")
+    if !empty(controller)
+      let file = controller
+    endif
+  endif
+
+  " If we have a file at this point, check the prop and return
+  if !empty(file)
+    if empty(prop)
+      return file
+    else
+      let Callback = graft#createCallback("graft#angular#highlightVariableProperty", [prop])
+      return [ file, Callback ]
+    endif
+  endif
+
+  " If it's not a variable, see if this line has "include=" in it, and load
+  " the file included
+  let line = getline('.')
+  if line =~ "include="
+    let include = matchlist(line, "include=\"'\\([^']\\+\\)'\"")
+    if len(include) > 1
+      return graft#angular#resolveTemplateFile(include[1])
+    endif
+  endif
+
+  " If we're on a controller name, look for that controller
+  if line =~ "ng-controller="
+    let controller = matchlist(line, "ng-controller=\"\\([^\"]\\+\\)\"")
+    if len(controller) > 1
+      return graft#angular#find(graft#angular#controllers(), "controller('" . controller[1] . "'")
+    endif
+  endif
 endfunction
 
 function graft#angular#sourceDir(directory, source, ...)
