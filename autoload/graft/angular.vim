@@ -3,6 +3,7 @@ let g:graft_angular_template_dir = get(g:, "graft_angular_template_dir", "app/te
 let g:graft_angular_controller_dir = get(g:, "graft_angular_controller_dir", g:graft_angular_source_dir . "/controllers")
 let g:graft_angular_directive_dir = get(g:, "graft_angular_directive_dir", g:graft_angular_source_dir . "/directives")
 let g:graft_angular_service_dir = get(g:, "graft_angular_service_dir", g:graft_angular_source_dir . "/services")
+let g:graft_angular_strict_cursor_placement = get(g:, "graft_angular_strict_cursor_placement", 0)
 
 function graft#angular#load()
   " Try to find the root of the repository
@@ -10,64 +11,33 @@ function graft#angular#load()
     let b:graft_angular_dir_root = graft#angular#getRoot()
   endif
 
-  " Try real file names, like would be in ng-include, first
-  let file = graft#angular#checkFileUnderCursor()
-  if !empty(file)
-    return file
-  endif
+  let loaders = [function('graft#angularLoaders#filename'),function('graft#angularLoaders#variable')]
 
-  " Try looking up the service or controller name
-  let variable = graft#angular#getVariableUnderCursor()
-  let prop = ""
-  if type(variable) == 3
-    let prop = variable[1]
-    let variable = variable[0]
+  if !g:graft_angular_strict_cursor_placement
+    call add(loaders, function('graft#angularLoaders#include'))
+    call add(loaders, function('graft#angularLoaders#controller'))
   endif
-
-  " If the variable starts with a capital it's probably a controller or service name
-  if variable =~ "^[A-Z]"
-    let service = graft#angular#find(graft#angular#services(), "factory('" . variable . "'")
-    if !empty(service)
-      let file = service
-    endif
-    let controller = graft#angular#find(graft#angular#controllers(), "controller('" . variable . "'")
-    if !empty(controller)
-      let file = controller
-    endif
-  endif
-
-  " If we have a file at this point, check the prop and return
-  if !empty(file)
-    if empty(prop)
+  
+  for l:Loader in loaders
+    let file = l:Loader()
+    if type(file) == 3
+      if !empty(file[0])
+        if !empty(file[1])
+          let Callback = graft#createCallback("graft#angular#highlightVariableProperty", [file[1]])
+          return [file[0], Callback]
+        else
+          return file[0]
+        endif
+      endif
+    elseif !empty(file)
       return file
-    else
-      let Callback = graft#createCallback("graft#angular#highlightVariableProperty", [prop])
-      return [ file, Callback ]
     endif
-  endif
-
-  " If it's not a variable, see if this line has "include=" in it, and load
-  " the file included
-  let line = getline('.')
-  if line =~ "include="
-    let include = matchlist(line, "include=\"'\\([^']\\+\\)'\"")
-    if len(include) > 1
-      return graft#angular#resolveTemplateFile(include[1])
-    endif
-  endif
-
-  " If we're on a controller name, look for that controller
-  if line =~ "ng-controller="
-    let controller = matchlist(line, "ng-controller=\"\\([^\"]\\+\\)\"")
-    if len(controller) > 1
-      return graft#angular#find(graft#angular#controllers(), "controller('" . controller[1] . "'")
-    endif
-  endif
+  endfor
 endfunction
 
-function graft#angular#sourceDir(directory, source, ...)
+function graft#angular#setSourceDir(directory, source, ...)
   let templates = a:0 > 0 ? a:1 : ""
-  let austr = "au BufNewFile,BufRead */" . a:directory . "/* call graft#angular#setSourceDir('" . a:source . "')"
+  let austr = "au BufNewFile,BufRead */" . a:directory . "/* call graft#angular#initializeSourceVars('" . a:source . "')"
   if !empty(templates)
     let austr .= " | let b:graft_angular_template_dir = '" . templates . "'"
   endif
@@ -78,7 +48,7 @@ function graft#angular#sourceDir(directory, source, ...)
   augroup END
 endfunction
 
-function graft#angular#setSourceDir(source)
+function graft#angular#initializeSourceVars(source)
   let b:graft_angular_source_dir = a:source
   let b:graft_angular_controller_dir = a:source . "/controllers"
   let b:graft_angular_service_dir = a:source . "/services"
@@ -99,27 +69,6 @@ endfunction
 
 function graft#angular#resolveTemplateFile(file)
   return b:graft_angular_dir_root . get(b:, "graft_angular_template_dir", g:graft_angular_template_dir) . "/" . a:file
-endfunction
-
-function graft#angular#checkFileUnderCursor()
-  let cfile = expand("<cfile>")
-  let cword = expand("<cword>")
-
-  " If this is an actual filename, just try looking it up in the source dir
-  " and then in the template dir
-  if !empty(cfile) && cfile != cword
-    let file = graft#angular#resolveSourceFile(cfile)
-    if filereadable(file)
-      return file
-    endif
-    let file = graft#angular#resolveTemplateFile(cfile)
-    echom file
-    if filereadable(file)
-      return file
-    endif
-  endif
-
-  return ""
 endfunction
 
 function graft#angular#getVariableUnderCursor()
