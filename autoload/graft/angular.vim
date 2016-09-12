@@ -11,11 +11,12 @@ function graft#angular#load()
     let b:graft_angular_dir_root = graft#angular#getRoot()
   endif
 
-  let loaders = [function('graft#angularLoaders#filename'),function('graft#angularLoaders#variable')]
+  let loaders = [function('graft#angularLoaders#filename'), function('graft#angularLoaders#variable')]
 
   if !g:graft_angular_strict_cursor_placement
     call add(loaders, function('graft#angularLoaders#include'))
     call add(loaders, function('graft#angularLoaders#controller'))
+    call add(loaders, function('graft#angularLoaders#scope'))
   endif
   
   for l:Loader in loaders
@@ -88,13 +89,13 @@ endfunction
 function graft#angular#services()
   let service_dir = get(b:, "graft_angular_service_dir", g:graft_angular_service_dir)
   let lookup = b:graft_angular_dir_root . service_dir
-  return split(globpath(lookup, "*"))
+  return split(globpath(lookup, "**"))
 endfunction
 
 function graft#angular#controllers()
   let controller_dir = get(b:, "graft_angular_controller_dir", g:graft_angular_controller_dir)
   let lookup = b:graft_angular_dir_root . controller_dir
-  return split(globpath(lookup, "*"))
+  return split(globpath(lookup, "**"))
 endfunction
 
 function graft#angular#find(list, pattern)
@@ -108,6 +109,6 @@ function graft#angular#find(list, pattern)
 endfunction
 
 function graft#angular#highlightVariableProperty(str)
-  call search('.\?\zs' . a:str . '\ze\( =\|:\) ')
+  call search('.\?\<\zs' . a:str . '\ze\( =\|:\) ')
   call matchadd("Search", a:str)
 endfunction

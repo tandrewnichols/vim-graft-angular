@@ -61,3 +61,19 @@ function graft#angularLoaders#controller()
 
   return ""
 endfunction
+
+function graft#angularLoaders#scope()
+  let lnum = line('.')
+  let col = col('.')
+  let currentLine = getline('.')
+  let matchnum = search("ng-controller=\"\\([^\"]\\+\\)\"", "b")
+  normal! "xyat
+  call cursor(lnum, col)
+  for line in split(@x, "\n")
+    if graft#trimLeft(line) == graft#trimLeft(currentLine)
+      let controller = matchlist(getline(matchnum), "ng-controller=\"\\([^\"]\\+\\)\"")[1]
+      let file = graft#angular#find(graft#angular#controllers(), "controller(['\"]" . controller . "['\"]")
+      return [ file, expand("<cword>") ]
+    endif
+  endfor
+endfunction
