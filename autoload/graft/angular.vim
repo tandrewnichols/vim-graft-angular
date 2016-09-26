@@ -112,3 +112,18 @@ function graft#angular#highlightVariableProperty(str)
   call search('.\?\<\zs' . a:str . '\ze\( =\|:\) ')
   call matchadd("Search", a:str)
 endfunction
+
+function graft#angular#detect()
+  let root = graft#getRoot()
+  if !empty(root)
+    if isdirectory(root . "/node_modules/angular") || isdirectory(root . "/bower_components/angular")
+      return 1
+    elseif exists('g:graft_angular_locations') && len(filter(deepcopy(g:graft_angular_locations), 'isdirectory(root . "/" . v:val)'))
+      return 1
+    else
+      return 0
+    endif
+  else
+    return 0
+  endif
+endfunction
