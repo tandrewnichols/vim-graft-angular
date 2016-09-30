@@ -19,21 +19,19 @@ function graft#angular#load()
     call add(loaders, function('graft#angularLoaders#scope'))
   endif
   
+  let matched = {}
   for l:Loader in loaders
-    let file = l:Loader()
-    if type(file) == 3
-      if !empty(file[0])
-        if !empty(file[1])
-          let Callback = graft#createCallback("graft#angular#highlightVariableProperty", [file[1]])
-          return [file[0], Callback]
-        else
-          return file[0]
-        endif
+    let loaderMatch = l:Loader()
+    if has_key(loaderMatch, 'file')
+      let matched.file = loaderMatch.file
+      if has_key(loaderMatch, 'prop')
+        let matched.Action = graft#createCallback("graft#angular#highlightVariableProperty", [loaderMatch.prop])
       endif
-    elseif !empty(file)
-      return file
+      break
     endif
   endfor
+
+  return matched
 endfunction
 
 function graft#angular#setSourceDir(directory, source, ...)

@@ -1,4 +1,5 @@
 function graft#angularLoaders#filename()
+  let matched = {}
   let cfile = expand("<cfile>")
   let cword = expand("<cword>")
 
@@ -7,18 +8,20 @@ function graft#angularLoaders#filename()
   if !empty(cfile) && cfile != cword && cfile =~ "[/.]+"
     let file = graft#angular#resolveSourceFile(cfile)
     if filereadable(file)
-      return file
-    endif
-    let file = graft#angular#resolveTemplateFile(cfile)
-    if filereadable(file)
-      return file
+      let matched.file = file
+    else
+      let file = graft#angular#resolveTemplateFile(cfile)
+      if filereadable(file)
+        let matched.file = file
+      endif
     endif
   endif
 
-  return ""
+  return matched
 endfunction
 
 function graft#angularLoaders#variable()
+  let matched = {}
   let file = ""
   let prop = ""
 
@@ -33,46 +36,60 @@ function graft#angularLoaders#variable()
   if variable =~# "^[A-Z]"
     let service = graft#angular#find(graft#angular#services(), "factory('" . variable . "'")
     if !empty(service)
-      let file = service
-    endif
-    let controller = graft#angular#find(graft#angular#controllers(), "controller('" . variable . "'")
-    if !empty(controller)
-      let file = controller
+      let matched.file = service
+    else
+      let controller = graft#angular#find(graft#angular#controllers(), "controller('" . variable . "'")
+      if !empty(controller)
+        let matched.file = controller
+      endif
     endif
   endif
 
-  return [file, prop]
+  if !empty(prop)
+    let matched.prop = prop
+  endif
+
+  return matched
 endfunction
 
 function graft#angularLoaders#directive()
+  let matched = {}
   let current = &iskeyword
   setlocal iskeyword+=\.
   let cword = expand("<cword>")
   let &iskeyword = current
   let directiveName = graft#angular#camelCaseDirective(cword)
-  echom directiveName
-  return graft#angular#find(graft#angular#directives(), "directive('" . directiveName . "'")
+  let directive = graft#angular#find(graft#angular#directives(), "directive('" . directiveName . "'")
+
+  if !empty(directive)
+    let matched.file = directive
+  endif
+
+  return matched
 endfunction
 
 function graft#angularLoaders#include()
+  let matched = {}
   let include = matchlist(getline('.'), "include=\"'\\([^']\\+\\)'\"")
   if len(include) > 1
-    return graft#angular#resolveTemplateFile(include[1])
+    let matched.file = graft#angular#resolveTemplateFile(include[1])
   endif
 
-  return ""
+  return matched
 endfunction
 
 function graft#angularLoaders#controller()
+  let matched = {}
   let controller = matchlist(getline('.'), "ng-controller=\"\\([^\"]\\+\\)\"")
   if len(controller) > 1
-    return graft#angular#find(graft#angular#controllers(), "controller(['\"]" . controller[1] . "['\"]")
+    let matched.file = graft#angular#find(graft#angular#controllers(), "controller(['\"]" . controller[1] . "['\"]")
   endif
 
-  return ""
+  return matched
 endfunction
 
 function graft#angularLoaders#scope()
+  let matched = {}
   let lnum = line('.')
   let col = col('.')
   let currentLine = getline('.')
@@ -84,10 +101,12 @@ function graft#angularLoaders#scope()
       let matches = matchlist(getline(matchnum), "ng-controller=\"\\([^\"]\\+\\)\"")
       if len(matches) > 0
         let controller = matches[1]
-        let file = graft#angular#find(graft#angular#controllers(), "controller(['\"]" . controller . "['\"]")
-        return [ file, expand("<cword>") ]
+        let matched.file = graft#angular#find(graft#angular#controllers(), "controller(['\"]" . controller . "['\"]")
+        let matched.prop = expand("<cword>")
+        break
       endif
     endif
   endfor
-  return ""
+
+  return matched
 endfunction
