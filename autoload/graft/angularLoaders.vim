@@ -44,6 +44,16 @@ function graft#angularLoaders#variable()
   return [file, prop]
 endfunction
 
+function graft#angularLoaders#directive()
+  let current = &iskeyword
+  setlocal iskeyword+=\.
+  let cword = expand("<cword>")
+  let &iskeyword = current
+  let directiveName = graft#angular#camelCaseDirective(cword)
+  echom directiveName
+  return graft#angular#find(graft#angular#directives(), "directive('" . directiveName . "'")
+endfunction
+
 function graft#angularLoaders#include()
   let include = matchlist(getline('.'), "include=\"'\\([^']\\+\\)'\"")
   if len(include) > 1
@@ -71,9 +81,13 @@ function graft#angularLoaders#scope()
   call cursor(lnum, col)
   for line in split(@x, "\n")
     if graft#trimLeft(line) == graft#trimLeft(currentLine)
-      let controller = matchlist(getline(matchnum), "ng-controller=\"\\([^\"]\\+\\)\"")[1]
-      let file = graft#angular#find(graft#angular#controllers(), "controller(['\"]" . controller . "['\"]")
-      return [ file, expand("<cword>") ]
+      let matches = matchlist(getline(matchnum), "ng-controller=\"\\([^\"]\\+\\)\"")
+      if len(matches) > 0
+        let controller = matches[1]
+        let file = graft#angular#find(graft#angular#controllers(), "controller(['\"]" . controller . "['\"]")
+        return [ file, expand("<cword>") ]
+      endif
     endif
   endfor
+  return ""
 endfunction

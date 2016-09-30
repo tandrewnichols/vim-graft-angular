@@ -11,7 +11,7 @@ function graft#angular#load()
     let b:graft_angular_dir_root = graft#angular#getRoot()
   endif
 
-  let loaders = [function('graft#angularLoaders#filename'), function('graft#angularLoaders#variable')]
+  let loaders = [function('graft#angularLoaders#filename'), function('graft#angularLoaders#variable'), function('graft#angularLoaders#directive')]
 
   if !g:graft_angular_strict_cursor_placement
     call add(loaders, function('graft#angularLoaders#include'))
@@ -74,10 +74,10 @@ endfunction
 
 function graft#angular#getVariableUnderCursor()
   let cword = expand("<cword>")
-  let curIsk = &iskeyword
+  let current = &iskeyword
   setlocal iskeyword+=\.
   let jsword = split(expand("<cword>"), '\.')
-  let &iskeyword = curIsk
+  let &iskeyword = current
 
   if cword == jsword[0]
     return [ cword, '' ]
@@ -95,6 +95,12 @@ endfunction
 function graft#angular#controllers()
   let controller_dir = get(b:, "graft_angular_controller_dir", g:graft_angular_controller_dir)
   let lookup = b:graft_angular_dir_root . controller_dir
+  return split(globpath(lookup, "**"))
+endfunction
+
+function graft#angular#directives()
+  let directive_dir = get(b:, "graft_angular_directive_dir", g:graft_angular_directive_dir)
+  let lookup = b:graft_angular_dir_root . directive_dir
   return split(globpath(lookup, "**"))
 endfunction
 
@@ -126,4 +132,16 @@ function graft#angular#detect()
   else
     return 0
   endif
+endfunction
+
+function graft#angular#camelCaseDirective(what)
+  let newWords = []
+  let curWords = split(a:what, '\v[^a-zA-Z0-9]')
+  call add(newWords, curWords[0])
+  let curWords = curWords[1:]
+  for word in curWords
+    call add(newWords, substitute(word, '\v^([a-z])(.*)', '\u\1\2', ''))
+  endfor
+
+  return join(newWords, '')
 endfunction
