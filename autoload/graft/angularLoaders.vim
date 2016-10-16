@@ -59,10 +59,12 @@ function graft#angularLoaders#directive()
   let cword = expand("<cword>")
   let &iskeyword = current
   let directiveName = graft#angular#camelCaseDirective(cword)
-  let directive = graft#angular#find(graft#angular#directives(), "directive('" . directiveName . "'")
+  if !empty(directiveName)
+    let directive = graft#angular#find(graft#angular#directives(), "directive('" . directiveName . "'")
 
-  if !empty(directive)
-    let matched.file = directive
+    if !empty(directive)
+      let matched.file = directive
+    endif
   endif
 
   return matched

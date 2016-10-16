@@ -15,8 +15,8 @@ function graft#angular#load()
 
   if !g:graft_angular_strict_cursor_placement
     call add(loaders, function('graft#angularLoaders#include'))
-    call add(loaders, function('graft#angularLoaders#controller'))
     call add(loaders, function('graft#angularLoaders#scope'))
+    call add(loaders, function('graft#angularLoaders#controller'))
   endif
   
   let matched = {}
@@ -135,6 +135,10 @@ endfunction
 function graft#angular#camelCaseDirective(what)
   let newWords = []
   let curWords = split(a:what, '\v[^a-zA-Z0-9]')
+  if len(curWords) == 0
+    return ''
+  endif
+
   call add(newWords, curWords[0])
   let curWords = curWords[1:]
   for word in curWords
