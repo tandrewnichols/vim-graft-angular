@@ -5,7 +5,7 @@ function graft#angularLoaders#filename()
 
   " If this is an actual filename, just try looking it up in the source dir
   " and then in the template dir
-  if !empty(cfile) && cfile != cword && cfile =~ "[/.]+"
+  if !empty(cfile) && cfile != cword && !empty(matchstr(cfile, '\v[\/.]+'))
     let file = graft#angular#resolveSourceFile(cfile)
     if filereadable(file)
       let matched.file = file
